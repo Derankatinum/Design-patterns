@@ -1,107 +1,145 @@
+from datetime import datetime
+from typing import List, Any
+from dataclasses import dataclass
 from abc import ABC, abstractmethod
+import random
+from collections import defaultdict
+import json
+import requests
+import mysql.connector as connection
+
+mydb = connection.connect(host="localhost", user="root", passwd="GBMgbm2200!", use_pure=True)
 
 
-class Shape:
-    filled = True
-    color = "red"
+class InfoStation:
 
-    def __init__(self, color: str, filled: bool):
-        self.color = color
-        self.filled = filled
-
-    def Shape(self, color: str, filled: bool):
-        print(f"shape is {self.color} and is it filled? {self.filled}")
-
-    def getColor(self):
-        return self.color
-
-    def setColor(self, color):
-        self.color = color
-
-    def isFilled(self):
-        return self.filled
-
-    def setFilled(self, fill):
-        self.filled = fill
+    def __init__(self, id: int, title: str, x, y):
+        self.id = id
+        self.title = title
+        self.x = x
+        self.y = y
 
     @abstractmethod
-    def getArea(self) -> int:
-        pass
-
-    @abstractmethod
-    def getPerimeter(self) -> int:
-        pass
-
-    @abstractmethod
-    def toString(self) -> str:
+    def personal_manage(self):
         pass
 
 
-class Circle(Shape):
-    def __init__(self, radius: int, color: str, filled: bool):
-        super().__init__(color, filled)
-        self.radius = radius
+class Station(InfoStation):
+    def __init__(self, id: int, title: str, x, y):
+        self.id = id
+        self.title = title
+        self.x = x
+        self.y = y
+        self.transports = []
 
-    @staticmethod
-    def Circles(radius, color: Shape, filled: Shape):
-        print(f'radius {radius} , color {Shape.color}, filled or not {Shape.filled}')
 
-    def toString(self) -> str:
+class Depo(InfoStation):
+    def __init__(self, id: int, title: str, x, y):
+        self.id = id
+        self.title = title
+        self.x = x
+        self.y = y
+
+    def route_manage(self, town_a, town_b, distance, truck):
         pass
 
-    def getPerimeter(self) -> float:
-        return 2 * 3.14 * self.radius
-
-    def getArea(self) -> float:
-        return 3.14 * self.radius ** 2
-
-
-class Rectangle(Shape):
-    width = 1
-    length = 2
-
-    @staticmethod
-    def Rectangles(self, color: Shape, filled: Shape):
-        print(f'radius {self.width}, length {self.length}, color {Shape.color}, filled or not {Shape.filled}')
-
-    def getWidth(self):
-        return self.width
-
-    def setWidth(self, width):
-        self.width = width
-
-    def getLength(self):
-        return self.length
-
-    def setLength(self, length):
-        self.length = length
-
-    def toString(self) -> str:
+    def personal_manage(self, passengers, staff):
         pass
 
-    def getPerimeter(self) -> int:
-        return 2 * (self.width + self.length)
 
-    def getArea(self) -> int:
-        return self.width * self.length
+class Transport:
+    def __init__(self, title, max_size_of_passengers):
+        self.title = title
+        self.passengers = []
 
 
-class Square(Rectangle):
-    side = 5
+class Train(Transport):
+    None
 
-    @staticmethod
-    def Rectangles(self, color: Shape, filled: Shape):
-        print(f'radius {self.side}, color {Shape.color}, filled or not {Shape.filled}')
 
-    def getSide(self):
-        return self.side
+class Bus(Transport):
+    None
 
-    def setSide(self, side):
-        self.side = side
 
-    def setWidth(self, width):
-        self.width = self.side
+class Truck(Transport):
+    None
 
-    def setLength(self, length):
-        self.width = self.side  
 
+class Schedule:
+    def __init__(self, title):
+        self.title = title
+        self.grafik = defaultdict(list)
+
+    def print_schedule(self):
+        print(self.grafik)
+
+
+class Route:
+    def __init__(self, schedule: Schedule):
+        self.route_dict = defaultdict(list)
+        self.schedule = schedule
+
+    def route_create(self, transport, station_a, station_b):
+        self.url_info = requests.get(
+            f"https://api.tomtom.com/routing/1/calculateRoute/{station_a.x},{station_a.y}:{station_b.x},{station_b.y}/json?key=lxQBgFn2k02GNm9w5XBmGcrQhZaQmzBQ").text
+        self.route_info = json.loads(self.url_info)
+
+        self.route_dict[transport.title].append(station_a.title)
+        self.route_dict[transport.title].append(station_b.title)
+
+        self.schedule.grafik[transport.title].append(station_a.title)
+        self.schedule.grafik[transport.title].append(self.route_info['routes'][0]['summary']['departureTime'])
+        self.schedule.grafik[transport.title].append(station_b.title)
+        self.schedule.grafik[transport.title].append(self.route_info['routes'][0]['summary']['arrivalTime'])
+
+
+class Casa:
+    def __init__(self):
+        self.lisst = defaultdict(list)
+
+    def buy_ticket(self, client, station_a, station_b):
+        self.lisst[client].append(station_a)
+        transport = station_a.transports[0]
+        transport.passengers.append(client)
+
+
+class Person:
+    def __init__(self, name):
+        self.surname = name
+        self.lisst = []
+
+    def buy_ticket(self, station_a, station_b, transport):
+        transport.passengers.append(self.surname)
+        self.lisst.append(transport.title)
+
+
+class DatabaseConnect:
+    def connect(self, person, station_a, station_b, transport, time_departure, time_arrive):
+        con = connection.connect(host="localhost", user="root", password="GBMgbm2200!", use_pure=True)
+        query = f"use module;"
+        cursor = con.cursor()
+        cursor.execute(query)
+        print(cursor.fetchall())
+        query1 = f"insert into schedule values ('{person.surname}','{station_a.title}','{station_b.title}','{transport.title}','{time_departure}','{time_arrive}'); "
+        cursor = con.cursor()
+        cursor.execute(query1)
+        print(cursor.fetchall())
+        con.commit()
+
+
+sch = Schedule('damn')
+station_1 = Station(1, 'lviv', 49.8399319, 23.9937661)
+station_2 = Depo(2, 'kyiv', 51.4861639, 31.2691622)
+bogdan = Bus('bus', 15)
+station_4 = Station(1, 'darn', 49.8399319, 23.9937661)
+station_3 = Depo(2, 'dnipro', 51.4861639, 31.2691622)
+bogdan2 = Train('express', 15)
+chel_1 = Person('NONAME')
+
+route1 = Route(sch)
+route1.route_create(bogdan, station_1, station_2)
+route1.route_create(bogdan2, station_3, station_4)
+
+chel_1.buy_ticket(station_1, station_2, bogdan2)
+
+DatabaseConnect()
